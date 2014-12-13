@@ -1,0 +1,24 @@
+{
+  "name": "Bb",
+  "version": "0.1",
+  "summary": "Flow-based programming library for Objective C",
+  "description": "Flow-based programming library for Objective C",
+  "homepage": "https://github.com/evilBird/Bb",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE.txt"
+  },
+  "authors": [
+    "evilBird"
+  ],
+  "social_media_url": "https://twitter.com/birdSoundMusic",
+  "source": {
+    "git": "https://github.com/evilBird/Bb.git",
+    "tag": "0.1"
+  },
+  "platforms": {
+    "ios": 7.0
+  },
+  "source_files": "*.{h,m}",
+  "requires_arc": true
+}
