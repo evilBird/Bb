@@ -4,10 +4,7 @@
   "summary": "Flow-based programming library for Objective C",
   "description": "Flow-based programming library for Objective C",
   "homepage": "https://github.com/evilBird/Bb",
-  "license": {
-    "type": "MIT",
-    "file": "LICENSE.txt"
-  },
+  "license": "MIT"
   "authors": [
     "evilBird"
   ],
