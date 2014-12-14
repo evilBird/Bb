@@ -19,6 +19,6 @@
   "platforms": {
     "ios": 7.0
   },
-  "source_files": "*.{h,m}","Ports/*.{h,m}"
+  "source_files": ["*.{h,m}","Ports/*.{h,m}"],
   "requires_arc": true
 }
