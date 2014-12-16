@@ -1,14 +1,238 @@
 //
-//  BbObject.m
+//  BbBang.m
+//  BbPatchExample
+//
+//  Created by Travis Henspeter on 7/17/14.
+//  Copyright (c) 2014 birdSound LLC. All rights reserved.
+//
+
+#import "BbObject.h"
+
+@implementation BbBang
+
++ (BbBang *)bang
+{
+    return [[BbBang alloc]init];
+}
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        _timeStamp = [NSDate date];
+    }
+    
+    return self;
+}
+
+- (NSString *)uniqueId
+{
+    return [NSString stringWithFormat:@"%p",self];
+}
+
+@end
+
+//
+//  BbPort.m
 //  BbLang
 //
 //  Created by Travis Henspeter on 7/13/14.
 //  Copyright (c) 2014 birdSound LLC. All rights reserved.
 //
 
-#import "BbObject.h"
-#import "BbOutlet.h"
 
+@implementation BbPort
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        _open = YES;
+        _connectionStatus = 0;
+    }
+    
+    return self;
+}
+
+- (NSString *)notificationName
+{
+    NSString *objectId = self.objectId;
+    NSString *portId = self.portId;
+    
+    return [NSString stringWithFormat:@"BlackBox.UI.BbPortConnectionStatusChangedNotification-%@-%@",objectId,portId];
+}
+
+- (void)setConnectionStatus:(BbPortConnectionStatus)connectionStatus
+{
+    if (_connectionStatus != connectionStatus) {
+        
+        //[[NSNotificationCenter defaultCenter]postNotificationName:self.notificationName object:@(connectionStatus)];
+    }
+    
+    _connectionStatus = connectionStatus;
+}
+         
+
+- (NSString *)portId
+{
+    return [NSString stringWithFormat:@"%p",self];
+}
+
+- (void)observePort:(BbPort *)port
+{
+    if (!self.observedPorts) {
+        self.observedPorts = [NSMutableSet set];
+    }
+    
+    if (![self.observedPorts containsObject:port]) {
+        [port addObserver:self forKeyPath:@"value" options:NSKeyValueObservingOptionNew context:nil];
+        [self.observedPorts addObject:port];
+        _connectionStatus = 1;
+    }
+}
+
+- (void)stopObservingPort:(BbPort *)port
+{
+    if (self.observedPorts && [self.observedPorts containsObject:port]) {
+        [port removeObserver:self forKeyPath:@"value"];
+        [self.observedPorts removeObject:port];
+    }
+}
+
+- (void)forwardToPort:(BbPort *)port
+{
+    [port observePort:self];
+    _connectionStatus = 1;
+    self.forwardPort = port;
+}
+
+- (void)removeForwardPort:(BbPort *)port
+{
+    [port stopObservingPort:self];
+    self.forwardPort = nil;
+}
+
+- (void)dealloc
+{
+    if (self.observedPorts) {
+        for (BbPort *port in self.observedPorts) {
+            [port removeObserver:self forKeyPath:@"value"];
+        }
+    }
+    self.connectionStatus = 0;
+    self.observedPorts = nil;
+    self.delegate = nil;
+}
+
+@end
+//
+//  BSDInlet.m
+//  BSDLang
+//
+//  Created by Travis Henspeter on 7/12/14.
+//  Copyright (c) 2014 birdSound LLC. All rights reserved.
+//
+@implementation BbInlet
+
+- (instancetype)initHot
+{
+    self = [super init];
+    if (self) {
+        _hot = YES;
+    }
+    return self;
+}
+
+- (instancetype)initCold
+{
+    return [super init];
+}
+
+- (void)input:(id)value
+{
+    if ([value isKindOfClass:[BbBang class]]) {
+        if (self.delegate) {
+            [self.delegate portReceivedBang:self];
+        }
+    }else{
+        
+        [self handleInput:value];
+    }
+}
+
+- (void)handleInput:(id)input
+{
+    if (self.isOpen) {
+        self.value = input;
+    }
+}
+
+- (BOOL)typeOk:(id)value
+{
+    return YES;
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
+{
+    if ([object isKindOfClass:[BbPort class]] && [self.observedPorts containsObject:object]) {
+        [self input:[(BbPort *)object value]];
+    }
+}
+
+
+@end
+
+//
+//  BbOutlet.m
+//  BbLang
+//
+//  Created by Travis Henspeter on 7/12/14.
+//  Copyright (c) 2014 birdSound LLC. All rights reserved.
+//
+
+@implementation BbOutlet
+
+- (void)connectToInlet:(BbInlet *)inlet
+{
+    [inlet observePort:self];
+}
+
+- (void)disconnectFromInlet:(BbInlet *)inlet
+{
+    [inlet stopObservingPort:self];
+}
+
+- (void)output:(id)value;
+{
+    [self handleOutput:value];
+}
+
+- (void)handleOutput:(id)output
+{
+    self.value = output;
+}
+
+- (BOOL)typeOK:(id)value
+{
+    return YES;
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
+{
+    if ([object isKindOfClass:[BbPort class]] && [self.observedPorts containsObject:object]) {
+        [self setValue:[(BbPort *)object value]];
+    }
+}
+
+@end
+
+//
+//  BbObject.m
+//  BbLang
+//
+//  Created by Travis Henspeter on 7/13/14.
+//  Copyright (c) 2014 birdSound LLC. All rights reserved.
+//
 @implementation BbObject
 
 #pragma mark - Public
@@ -214,10 +438,6 @@
 
 - (NSString *)objectId
 {
-    if (self.assignedId != nil) {
-        return self.assignedId;
-    }
-    
     return [NSString stringWithFormat:@"%p",self];
 }
 
@@ -230,6 +450,11 @@
     }
     
     return NO;
+}
+
+- (NSInteger)hash
+{
+    return [self.objectId hash];
 }
 
 #pragma mark - Private

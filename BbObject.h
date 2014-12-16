@@ -1,5 +1,5 @@
 //
-//  BbObject.h
+//  BbPort.h
 //  BbLang
 //
 //  Created by Travis Henspeter on 7/13/14.
@@ -7,10 +7,111 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "BbInlet.h"
-#import "BbOutlet.h"
 
-@class BbObject;
+@interface BbBang : NSObject
+//BbBang: a generic event
+
++ (BbBang *)bang;
+
+@property (nonatomic,readonly)NSDate *timeStamp;
+
+- (NSString *)uniqueId;
+
+@end
+
+typedef NS_ENUM(NSInteger, BbPortConnectionStatus) {
+    BbPortConnectionStatusNotConnected = 0,
+    BbPortConnectionStatusConnected = 1,
+    BbPortConnectionStatusTypeMismatch = 2
+};
+
+@protocol BbPortDelegate
+
+- (void)portReceivedBang:(id)sender;
+
+@end
+
+@interface BbPort : NSObject 
+
+//Current value
+@property (nonatomic)id value;
+//Human readable name
+@property (nonatomic,strong) NSString *name;
+//Unique identifer for a specific port
+@property (nonatomic,strong) NSString *portId;
+//Ports get assigned the object id of the BbObject instance to which they belong
+@property (nonatomic,assign) NSString *objectId;
+//Indicates whether the port is currently accepting input
+@property (nonatomic,getter = isOpen) BOOL open;
+//Keep references to observed ports
+@property (nonatomic,strong) NSMutableSet *observedPorts;
+//Connection status
+@property (nonatomic)BbPortConnectionStatus connectionStatus;
+//Port delegate 
+@property (nonatomic,weak)id<BbPortDelegate>delegate;
+@property (nonatomic,strong)BbPort *forwardPort;
+
+- (instancetype)init;
+- (void)observePort:(BbPort *)port;
+- (void)stopObservingPort:(BbPort *)port;
+- (void)forwardToPort:(BbPort *)port;
+- (void)removeForwardPort:(BbPort *)port;
+- (NSString *)notificationName;
+
+@end
+
+//
+//  BbInlet.h
+//  BbLang
+//
+//  Created by Travis Henspeter on 7/12/14.
+//  Copyright (c) 2014 birdSound LLC. All rights reserved.
+//
+
+@interface BbInlet : BbPort
+
+@property (nonatomic,getter = isHot) BOOL hot;
+
+- (instancetype)initHot;
+- (instancetype)initCold;
+
+// pass value to inlet
+- (void)input:(id)value;
+- (void)handleInput:(id)input;
+- (BOOL)typeOk:(id)value;
+
+@end
+
+//
+//  BbOutlet.h
+//  BbLang
+//
+//  Created by Travis Henspeter on 7/12/14.
+//  Copyright (c) 2014 birdSound LLC. All rights reserved.
+//
+
+@class BbObject,BbOutlet;
+typedef void (^BbObjectOutputBlock)(BbObject *object, BbOutlet *outlet);
+
+@interface BbOutlet : BbPort
+
+@property (nonatomic,strong)BbObjectOutputBlock outputBlock;
+
+- (void)connectToInlet:(BbInlet *)inlet;
+- (void)disconnectFromInlet:(BbInlet *)inlet;
+- (void)output:(id)value;
+- (void)handleOutput:(id)output;
+- (BOOL)typeOK:(id)value;
+
+@end
+
+//
+//  BbObject.h
+//  BbLang
+//
+//  Created by Travis Henspeter on 7/13/14.
+//  Copyright (c) 2014 birdSound LLC. All rights reserved.
+//
 
 //The abstract super class for all BbObjects. Encapsulates input/output behavior
 @interface BbObject : NSObject <BbPortDelegate>
